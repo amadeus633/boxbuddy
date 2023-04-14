@@ -1,7 +1,7 @@
 import subprocess
 
 def main():
-    command = "sudo openvpn lab_BinaryBrawler.ovpn"
+    command = "sudo openvpn lab_<htb_username>.ovpn"
 
     try:
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)

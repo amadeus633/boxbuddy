@@ -13,8 +13,10 @@ class ScriptRunner(QRunnable):
         self.command = command
 
     def run(self):
-        subprocess.Popen(["qterminal", "-e"] + [" ".join(self.command) + "; read -p 'Press [Enter] to close the terminal...'"])
-
+    if platform.system() == "Windows":
+        subprocess.Popen(["cmd.exe", "/c"] + self.command, creationflags=subprocess.CREATE_NEW_CONSOLE)
+    else:
+        subprocess.Popen(["qterminal", "-e"] + [" ".join(self.command)])
 
 def run_script1_with_input():
     ip_address = ip_entry.text()

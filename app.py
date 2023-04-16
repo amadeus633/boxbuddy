@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QGridLayout,
 )
 from PyQt5.QtCore import QThreadPool, QRunnable
+from PyQt5.QtGui import QIcon  # Add this import
 import subprocess
 import platform
 
@@ -67,6 +68,10 @@ def load_stylesheet(file_path):
 
 app = QApplication(sys.argv)
 app.setStyleSheet(load_stylesheet("styles.css"))
+
+# Set the application icon
+icon = QIcon("img/200x200.png")  # Replace the path with the actual path to your icon file
+app.setWindowIcon(icon)
 
 window = QWidget()
 window.setWindowTitle("BoxBuddy")

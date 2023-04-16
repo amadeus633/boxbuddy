@@ -1,11 +1,20 @@
 #!/usr/bin/python
 
 import sys
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit,
-                             QPushButton, QTabWidget, QGridLayout)
+from PyQt5.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTabWidget,
+    QGridLayout,
+)
 from PyQt5.QtCore import QThreadPool, QRunnable
 import subprocess
 import platform
+
 
 class ScriptRunner(QRunnable):
     def __init__(self, command):
@@ -13,10 +22,14 @@ class ScriptRunner(QRunnable):
         self.command = command
 
     def run(self):
-    if platform.system() == "Windows":
-        subprocess.Popen(["cmd.exe", "/c"] + self.command, creationflags=subprocess.CREATE_NEW_CONSOLE)
-    else:
-        subprocess.Popen(["qterminal", "-e"] + [" ".join(self.command)])
+        if platform.system() == "Windows":
+            subprocess.Popen(
+                ["cmd.exe", "/c"] + self.command,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+        else:
+            subprocess.Popen(["qterminal", "-e"] + [" ".join(self.command)])
+
 
 def run_script1_with_input():
     ip_address = ip_entry.text()
@@ -25,12 +38,14 @@ def run_script1_with_input():
     runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
     QThreadPool.globalInstance().start(runner)
 
+
 def run_script2_with_input():
     nip_address = nip_entry.text()
     if not nip_address:
         return
     runner = ScriptRunner(["python", "scripts/nikto.py", nip_address])
     QThreadPool.globalInstance().start(runner)
+
 
 def run_script3_with_input():
     ddomain = ddomain_entry.text()
@@ -39,13 +54,16 @@ def run_script3_with_input():
     runner = ScriptRunner(["python", "scripts/dirsearch.py", ddomain])
     QThreadPool.globalInstance().start(runner)
 
+
 def run_vpn():
     runner = ScriptRunner(["python", "scripts/vpn.py"])
     QThreadPool.globalInstance().start(runner)
 
+
 def load_stylesheet(file_path):
     with open(file_path, "r") as file:
         return file.read()
+
 
 app = QApplication(sys.argv)
 app.setStyleSheet(load_stylesheet("styles.css"))

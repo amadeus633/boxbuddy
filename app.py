@@ -41,10 +41,10 @@ def run_script1_with_input():
 
 
 def run_script2_with_input():
-    nip_address = nip_entry.text()
-    if not nip_address:
+   nip_address = ip_entry.text()
+    if not ip_address:
         return
-    runner = ScriptRunner(["python", "scripts/nikto.py", nip_address])
+    runner = ScriptRunner(["python", "scripts/nikto.py", ip_address])
     QThreadPool.globalInstance().start(runner)
 
 
@@ -110,12 +110,6 @@ recon_layout.addWidget(ip_entry)
 button1 = QPushButton("nmap")
 button1.clicked.connect(run_script1_with_input)
 recon_layout.addWidget(button1)
-
-nip_label = QLabel("Please enter the IP address:")
-recon_layout.addWidget(nip_label)
-
-nip_entry = QLineEdit()
-recon_layout.addWidget(nip_entry)
 
 button2 = QPushButton("nikto")
 button2.clicked.connect(run_script2_with_input)

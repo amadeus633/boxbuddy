@@ -56,21 +56,25 @@ def run_script3_with_input():
     QThreadPool.globalInstance().start(runner)
 
 
-def run_vpn():
-    runner = ScriptRunner(["python", "scripts/vpn.py"])
+def run_vpn(file):
+    runner = ScriptRunner(["python", "scripts/vpn.py", f"{file}"])
     QThreadPool.globalInstance().start(runner)
-
 
 def load_stylesheet(file_path):
     with open(file_path, "r") as file:
         return file.read()
-
+        
+def file_select():
+    global filename
+    Tk().withdraw()
+    filename = askopenfilename()
+    file_label.setText(filename.split('/')[-1])
 
 app = QApplication(sys.argv)
 app.setStyleSheet(load_stylesheet("styles.css"))
 
 # Set the application icon
-icon = QIcon("img/200x200.png")  # Replace the path with the actual path to your icon file
+icon = QIcon("img/200x200.png")
 app.setWindowIcon(icon)
 
 window = QWidget()
@@ -84,13 +88,23 @@ tab_widget = QTabWidget()
 layout.addWidget(tab_widget)
 
 # Tab 1: Setup commands
+
+filename = 'None selected'
+
 setup_tab = QWidget()
 tab_widget.addTab(setup_tab, "Setup")
 setup_layout = QVBoxLayout()
 setup_tab.setLayout(setup_layout)
 
+file_btn = QPushButton("Select file")
+file_btn.clicked.connect(file_select)
+setup_layout.addWidget(file_btn)
+
+file_label = QLabel(filename)
+setup_layout.addWidget(file_label)
+
 button3 = QPushButton("vpn")
-button3.clicked.connect(run_vpn)
+button3.clicked.connect(lambda:run_vpn(filename))
 setup_layout.addWidget(button3)
 
 # Add setup tab content here

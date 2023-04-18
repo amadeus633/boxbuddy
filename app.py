@@ -16,8 +16,6 @@ from PyQt5.QtGui import QIcon  # Add this import
 import subprocess
 import platform
 
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename
 
 class ScriptRunner(QRunnable):
     def __init__(self, command):
@@ -25,7 +23,13 @@ class ScriptRunner(QRunnable):
         self.command = command
 
     def run(self):
-        subprocess.Popen(["qterminal", "-e"] + [" ".join(self.command) + "; read -p 'Press [Enter] to close the terminal...'"])
+        if platform.system() == "Windows":
+            subprocess.Popen(
+                ["cmd.exe", "/c"] + self.command,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+        else:
+            subprocess.Popen(["qterminal", "-e"] + [" ".join(self.command)])
 
 
 def run_script1_with_input():
@@ -35,12 +39,14 @@ def run_script1_with_input():
     runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
     QThreadPool.globalInstance().start(runner)
 
+
 def run_script2_with_input():
-    nip_address = nip_entry.text()
-    if not nip_address:
+   nip_address = ip_entry.text()
+    if not ip_address:
         return
-    runner = ScriptRunner(["python", "scripts/nikto.py", nip_address])
+    runner = ScriptRunner(["python", "scripts/nikto.py", ip_address])
     QThreadPool.globalInstance().start(runner)
+
 
 def run_script3_with_input():
     ddomain = ddomain_entry.text()
@@ -49,25 +55,22 @@ def run_script3_with_input():
     runner = ScriptRunner(["python", "scripts/dirsearch.py", ddomain])
     QThreadPool.globalInstance().start(runner)
 
-def run_vpn(file):
-    runner = ScriptRunner(["python", "scripts/vpn.py", f"{file}"])
+
+def run_vpn():
+    runner = ScriptRunner(["python", "scripts/vpn.py"])
     QThreadPool.globalInstance().start(runner)
+
 
 def load_stylesheet(file_path):
     with open(file_path, "r") as file:
         return file.read()
-        
-def file_select():
-    global filename
-    Tk().withdraw()
-    filename = askopenfilename()
-    file_label.setText(filename.split('/')[-1])
+
 
 app = QApplication(sys.argv)
 app.setStyleSheet(load_stylesheet("styles.css"))
 
 # Set the application icon
-icon = QIcon("img/200x200.png")
+icon = QIcon("img/200x200.png")  # Replace the path with the actual path to your icon file
 app.setWindowIcon(icon)
 
 window = QWidget()
@@ -81,23 +84,13 @@ tab_widget = QTabWidget()
 layout.addWidget(tab_widget)
 
 # Tab 1: Setup commands
-
-filename = 'None selected'
-
 setup_tab = QWidget()
 tab_widget.addTab(setup_tab, "Setup")
 setup_layout = QVBoxLayout()
 setup_tab.setLayout(setup_layout)
 
-file_btn = QPushButton("Select file")
-file_btn.clicked.connect(file_select)
-setup_layout.addWidget(file_btn)
-
-file_label = QLabel(filename)
-setup_layout.addWidget(file_label)
-
 button3 = QPushButton("vpn")
-button3.clicked.connect(lambda:run_vpn(filename))
+button3.clicked.connect(run_vpn)
 setup_layout.addWidget(button3)
 
 # Add setup tab content here
@@ -117,12 +110,6 @@ recon_layout.addWidget(ip_entry)
 button1 = QPushButton("nmap")
 button1.clicked.connect(run_script1_with_input)
 recon_layout.addWidget(button1)
-
-nip_label = QLabel("Please enter the IP address:")
-recon_layout.addWidget(nip_label)
-
-nip_entry = QLineEdit()
-recon_layout.addWidget(nip_entry)
 
 button2 = QPushButton("nikto")
 button2.clicked.connect(run_script2_with_input)

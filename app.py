@@ -16,6 +16,8 @@ from PyQt5.QtGui import QIcon  # Add this import
 import subprocess
 import platform
 
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
 
 class ScriptRunner(QRunnable):
     def __init__(self, command):
@@ -41,7 +43,7 @@ def run_script1_with_input():
 
 
 def run_script2_with_input():
-   nip_address = ip_entry.text()
+    ip_address = ip_entry.text()
     if not ip_address:
         return
     runner = ScriptRunner(["python", "scripts/nikto.py", ip_address])

@@ -9,58 +9,72 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QPushButton,
     QTabWidget,
-    QGridLayout,
-    QTextEdit,  
+    QTextEdit,
+    QFormLayout,
+    QHBoxLayout,
+    QFileDialog
 )
-from PyQt5.QtCore import QThreadPool, QRunnable
-from PyQt5.QtGui import QIcon  
+from PyQt5.QtCore import QThreadPool, QRunnable, QObject, pyqtSignal
+from PyQt5.QtGui import QIcon, QClipboard
 import subprocess
 import platform
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
-#
-#
-#
+
+class ScriptRunnerSignals(QObject):
+    output_ready = pyqtSignal(str, str, str)
+
 class ScriptRunner(QRunnable):
+
     def __init__(self, command):
         super().__init__()
         self.command = command
+        self.signals = ScriptRunnerSignals()
 
     def run(self):
         if platform.system() == "Windows":
-            subprocess.Popen(
+            result = subprocess.run(
                 ["cmd.exe", "/k"] + self.command,
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
+                capture_output=True,
             )
         elif platform.system() == "Linux":
-            shell = "zsh"  # Change this to "bash" if you prefer bash
-
-            # Example using exo-open
-            subprocess.Popen(["exo-open", "--launch", "TerminalEmulator"] + [shell, "-c", " ".join(self.command) + "; exec " + shell])
+            shell = "zsh"
+            result = subprocess.run(["exo-open", "--launch", "TerminalEmulator"] + [shell, "-c", " ".join(self.command) + "; exec " + shell], capture_output=True)
         else:
-            subprocess.Popen(["qterminal", "-e"] + [" ".join(self.command)])
+            result = subprocess.run(["qterminal", "-e"] + [" ".join(self.command)], capture_output=True)
 
-        # Update the output widget with the results
-        output_widget.append(f"Command: {self.command}")
-        output_widget.append("STDOUT:")
-        output_widget.append(stdout.decode())
-        output_widget.append("STDERR:")
-        output_widget.append(stderr.decode())
+        stdout, stderr = result.stdout, result.stderr
+        self.signals.output_ready.emit(f"Command: {self.command}", stdout.decode(), stderr.decode())
+
+def update_output_widget(command, stdout, stderr):
+    output_widget.append(command)
+    output_widget.append("STDOUT:")
+    output_widget.append(stdout)
+    output_widget.append("STDERR:")
+    output_widget.append(stderr)
 
 def run_script1_with_input(output_widget):
     ip_address = ip_entry.text()
     if not ip_address:
         return
     runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
-    runner.signals.finished.connect(lambda: output_widget.append("Finished running script1"))
+    runner.signals.output_ready.connect(update_output_widget)
     QThreadPool.globalInstance().start(runner)
+
+# ... (The rest of your script remains the same)
+
+# In each function where you create a ScriptRunner instance, connect the output_ready signal to the update_output_widget slot:
+# runner.signals.output_ready.connect(update_output_widget)
+
 
 def run_nikto(output_widget):
     ip_address = ip_entry.text()
     if not ip_address:
         return
     runner = ScriptRunner(["python", "scripts/nikto.py", ip_address])
-    runner.signals.finished.connect(lambda: output_widget.append("Finished running script1"))
+    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
+    runner.signals.output_ready.connect(update_output_widget)
     QThreadPool.globalInstance().start(runner)
 
 def run_dirsearch(output_widget):
@@ -68,7 +82,8 @@ def run_dirsearch(output_widget):
     if not ddomain:
         return
     runner = ScriptRunner(["python", "scripts/dirsearch.py", ddomain])
-    runner.signals.finished.connect(lambda: output_widget.append("Finished running script1"))
+    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
+    runner.signals.output_ready.connect(update_output_widget)
     QThreadPool.globalInstance().start(runner)
 
 def run_gobuster_vhost(output_widget):
@@ -76,7 +91,8 @@ def run_gobuster_vhost(output_widget):
     if not ddomain:
         return
     runner = ScriptRunner(["python", "scripts/gobuster-vhost.py", ddomain])
-    runner.signals.finished.connect(lambda: output_widget.append("Finished running script1"))
+    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
+    runner.signals.output_ready.connect(update_output_widget)
     QThreadPool.globalInstance().start(runner)
 
 def run_gobuster_dir(output_widget):
@@ -84,7 +100,8 @@ def run_gobuster_dir(output_widget):
     if not ddomain:
         return
     runner = ScriptRunner(["python", "scripts/gobuster-dir.py", ddomain])
-    runner.signals.finished.connect(lambda: output_widget.append("Finished running script1"))
+    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
+    runner.signals.output_ready.connect(update_output_widget)
     QThreadPool.globalInstance().start(runner)
 
 def run_vpn(file):
@@ -125,7 +142,7 @@ app.setWindowIcon(icon)
 # window size
 window = QWidget()
 window.setWindowTitle("BoxBuddy")
-window.setGeometry(100, 100, 250, 300)
+window.setGeometry(100, 100, 700, 500)
 
 layout = QVBoxLayout()
 window.setLayout(layout)
@@ -215,7 +232,8 @@ button5 = QPushButton("gobuster - dir")
 button5.clicked.connect(run_gobuster_dir)
 recon_layout.addWidget(button5)
 
-
+feed_label = QLabel("Feed (loads after closing terminal window)")
+recon_layout.addWidget(feed_label)
 output_widget = QTextEdit()
 output_widget.setReadOnly(True)
 recon_layout.addWidget(output_widget)
@@ -234,15 +252,79 @@ recon_layout.addWidget(save_button)
 #
 #
 #
-# Tab 3: Automation
-automation_tab = QWidget()
-tab_widget.addTab(automation_tab, "Automation")
-automation_layout = QVBoxLayout()
-automation_tab.setLayout(automation_layout)
+# Tab 3: CopyPaste
+
+class CopyPasteTab(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+
+        form_layout = QFormLayout()
+        self.domain_entry = QLineEdit()
+        self.ipaddress_entry = QLineEdit()
+        form_layout.addRow("Domain:", self.domain_entry)
+        form_layout.addRow("IP address:", self.ipaddress_entry)
+
+        submit_button = QPushButton("Submit")
+        submit_button.clicked.connect(self.on_submit)
+        form_layout.addRow(submit_button)
+
+        layout.addLayout(form_layout)
+
+        line = QLabel()
+        line.setFrameShape(QLabel.HLine)
+        line.setFrameShadow(QLabel.Sunken)
+        layout.addWidget(line)
+
+        self.sentences = [
+            "nmap -sC -sV -Pn -p- ipaddress",
+            "dirb http://ipaddress /usr/share/dirb/wordlists/common.txt -X .htbdomain",
+            "nikto -h ipaddress",
+            "Sed do eiusmod ipaddress tempor incididunt.",
+            "Sed do eiusmod ipaddress tempor incididunt.",
+            "Sed do eiusmod ipaddress tempor incididunt.",
+            "Sed do eiusmod ipaddress tempor incididunt."
+        ]
+
+        self.buttons = []
+        self.labels = []
+
+        for sentence in self.sentences:
+            button = QPushButton("Copy")
+            button.clicked.connect(self.copy_to_clipboard)
+            label = QLabel(sentence)
+            sentence_layout = QHBoxLayout()
+            sentence_layout.addWidget(button)
+            sentence_layout.addWidget(label)
+            layout.addLayout(sentence_layout)
+            self.buttons.append(button)
+            self.labels.append(label)
+
+        self.setLayout(layout)
+
+    def on_submit(self):
+        ipaddress = self.ipaddress_entry.text()
+        domain = self.domain_entry.text()
+
+        for i, sentence in enumerate(self.sentences):
+            updated_sentence = sentence.replace("ipaddress", ipaddress).replace("htbdomain", domain)
+            self.labels[i].setText(updated_sentence)
+
+    def copy_to_clipboard(self):
+        index = self.buttons.index(self.sender())
+        text = self.labels[index].text()
+        clipboard = QApplication.clipboard()
+        clipboard.setText(text)
 #
 #
 #
-#
+CopyPaste_tab = CopyPasteTab()
+tab_widget.addTab(CopyPaste_tab, "CopyPaste")
+
 #
 
 window.show()

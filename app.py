@@ -73,6 +73,7 @@ def run_nikto(output_widget):
     if not ip_address:
         return
     runner = ScriptRunner(["python", "scripts/nikto.py", ip_address])
+    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
     runner.signals.output_ready.connect(update_output_widget)
     QThreadPool.globalInstance().start(runner)
 
@@ -81,6 +82,7 @@ def run_dirsearch(output_widget):
     if not ddomain:
         return
     runner = ScriptRunner(["python", "scripts/dirsearch.py", ddomain])
+    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
     runner.signals.output_ready.connect(update_output_widget)
     QThreadPool.globalInstance().start(runner)
 
@@ -89,6 +91,7 @@ def run_gobuster_vhost(output_widget):
     if not ddomain:
         return
     runner = ScriptRunner(["python", "scripts/gobuster-vhost.py", ddomain])
+    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
     runner.signals.output_ready.connect(update_output_widget)
     QThreadPool.globalInstance().start(runner)
 
@@ -97,6 +100,7 @@ def run_gobuster_dir(output_widget):
     if not ddomain:
         return
     runner = ScriptRunner(["python", "scripts/gobuster-dir.py", ddomain])
+    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
     runner.signals.output_ready.connect(update_output_widget)
     QThreadPool.globalInstance().start(runner)
 
@@ -152,7 +156,7 @@ layout.addWidget(tab_widget)
 #
 # Tab 1: Setup commands
 
-
+filename = 'None selected'
 
 setup_tab = QWidget()
 tab_widget.addTab(setup_tab, "Setup")
@@ -163,8 +167,6 @@ file_btn = QPushButton("Select file")
 file_btn.clicked.connect(file_select)
 setup_layout.addWidget(file_btn)
 
-filename = 'None selected'
-
 file_label = QLabel(filename)
 setup_layout.addWidget(file_label)
 
@@ -172,21 +174,21 @@ button3 = QPushButton("vpn")
 button3.clicked.connect(lambda:run_vpn(filename))
 setup_layout.addWidget(button3)
 
-# ip_label = QLabel("Please enter the IP address:")
-# setup_layout.addWidget(ip_label)
+ip_label = QLabel("Please enter the IP address:")
+setup_layout.addWidget(ip_label)
 
-# ip_entry = QLineEdit()
-# setup_layout.addWidget(ip_entry)
+ip_entry = QLineEdit()
+setup_layout.addWidget(ip_entry)
 
-# ddomain_label = QLabel("Please enter the domain:")
-# setup_layout.addWidget(ddomain_label)
+ddomain_label = QLabel("Please enter the domain:")
+setup_layout.addWidget(ddomain_label)
 
-# ddomain_entry = QLineEdit()
-# setup_layout.addWidget(ddomain_entry)
+ddomain_entry = QLineEdit()
+setup_layout.addWidget(ddomain_entry)
 
-# button4 = QPushButton("Add to etc/hosts")
-# button4.clicked.connect(run_hosts)
-# setup_layout.addWidget(button4)
+button4 = QPushButton("Add to etc/hosts")
+button4.clicked.connect(run_hosts)
+setup_layout.addWidget(button4)
 #
 #
 #

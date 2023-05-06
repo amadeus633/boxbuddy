@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys
+import os
 from PyQt5.QtWidgets import (
     QApplication,
     QWidget,
@@ -14,14 +15,16 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QFileDialog
 )
-from PyQt5.QtCore import QThreadPool, QRunnable, QObject, pyqtSignal
+from PyQt5.QtCore import QThreadPool, QRunnable, QObject, pyqtSignal, QUrl
 from PyQt5.QtGui import QIcon, QClipboard
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 import subprocess
 import platform
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 import openai
-openai.api_key = "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"
+openai.api_key = "KEY"
+
 
 class ScriptRunnerSignals(QObject):
     output_ready = pyqtSignal(str, str, str)
@@ -116,16 +119,19 @@ def file_select():
     filename = askopenfilename()
     file_label.setText(filename.split('/')[-1])
 
-def run_hosts():
-    ddomain = ddomain_entry.text()
-    if not ddomain:
-        return
-    ip_address = ip_entry.text()
-    if not ip_address:
-        return
-    runner = ScriptRunner(["python", "scripts/hosts.py", ip_address, ddomain])
-    QThreadPool.globalInstance().start(runner)
-
+# def run_hosts():
+#     ddomain = ddomain_entry.text()
+#     if not ddomain:
+#         return
+#     ip_address = ip_entry.text()
+#     if not ip_address:
+#         return
+#     runner = ScriptRunner(["python", "scripts/hosts.py", ip_address, ddomain])
+#     QThreadPool.globalInstance().start(runner)
+#
+#
+#
+# hackGPT
 def generate_text(prompt):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
@@ -133,13 +139,33 @@ def generate_text(prompt):
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
         ],
-        max_tokens=50,
+        max_tokens=2000,
         n=1,
         temperature=0.5,
     )
 
     message = response['choices'][0]['message']['content'].strip()
     return message
+#
+#
+#
+# Personal CLI
+class CLITab(QWidget):
+    def __init__(self, parent=None):
+        super(CLITab, self).__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        web_engine_view = QWebEngineView()
+
+        # Get the absolute path for the index.html file
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        index_file_path = os.path.join(current_dir, "cli", "index.html")
+
+        web_engine_view.load(QUrl.fromLocalFile(index_file_path))
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(web_engine_view)   
 #
 #
 #
@@ -284,7 +310,7 @@ class CopyPasteTab(QWidget):
         form_layout.addRow("Domain:", self.domain_entry)
         form_layout.addRow("IP address:", self.ipaddress_entry)
 
-        submit_button = QPushButton("Submit")
+        submit_button = QPushButton("Replace")
         submit_button.clicked.connect(self.on_submit)
         form_layout.addRow(submit_button)
 
@@ -355,23 +381,35 @@ class ChatGPTTab(QWidget):
         self.user_input = QTextEdit(self)
         layout.addWidget(self.user_input)
 
-        # ChatGPT response
-        layout.addWidget(QLabel("ChatGPT response:"))
-        self.chatgpt_response = QTextEdit(self)
-        self.chatgpt_response.setReadOnly(True)
-        layout.addWidget(self.chatgpt_response)
-
         # Send button
         self.send_button = QPushButton("Send", self)
         self.send_button.clicked.connect(self.send_message)
         layout.addWidget(self.send_button)
+        
+        # ChatGPT response
+        layout.addWidget(QLabel("Response:"))
+        
+        self.chatgpt_response = QTextEdit(self)
+        self.chatgpt_response.setReadOnly(True)
+        layout.addWidget(self.chatgpt_response)
 
+        # Copy button
+        self.copy_button = QPushButton("Copy", self)
+        self.copy_button.clicked.connect(self.copy_chatgpt_response)
+        layout.addWidget(self.copy_button)
+        
         self.setLayout(layout)
+
 
     def send_message(self):
         user_message = self.user_input.toPlainText()
         chatgpt_message = generate_text(user_message)
         self.chatgpt_response.setPlainText(chatgpt_message)
+
+    def copy_chatgpt_response(self):
+        chatgpt_message = self.chatgpt_response.toPlainText()
+        clipboard = QApplication.clipboard()
+        clipboard.setText(chatgpt_message)
 #
 #
 #
@@ -380,7 +418,11 @@ tab_widget.addTab(hackGPT_tab, "hackGPT")
 #
 #
 #
-
+cli_tab = CLITab()
+tab_widget.addTab(cli_tab, "CLI")
+#
+#
+#
 
 window.show()
 sys.exit(app.exec_())

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>BoxBuddy Personal CLI</title>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.4/css/bulma.min.css'><link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<section class="hero is-fullheight">
+  <div class="hero-body">
+    <div class="container">
+      <div class="columns">
+        <div class="column is-flex">
+          <div class="column-child terminal shadow">
+            <div class="terminal-bar dark-mode">
+              <div class="icon-btn close"></div>
+              <div class="icon-btn min"></div>
+              <div class="icon-btn max"></div>
+              <div class="terminal-bar-text is-hidden-mobile dark-mode-text">guest@boxbuddy: ~</div>
+            </div>
+            <div class="terminal-window primary-bg" onclick="document.getElementById('dummyKeyboard').focus();">
+              <div class="terminal-output" id="terminalOutput">
+                <!-- <div class="terminal-line">
+                  <span class="help-msg">Type <span class="code">commands</span> for a list of existing commands. Type <span class="code">info</span> to learn how to add your own commands.</span>
+                </div> -->
+              </div>
+              <div class="terminal-line">
+                <span class="success"></span> <span class="directory">┌──(box㉿buddy)-[~]<br>
+└─$ </span> <span class="user-input" id="userInput"></span>
+                <input type="text" id="dummyKeyboard" class="dummy-keyboard">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="column is-flex">
+            <p>
+              <span class="help-msg">Type <span class="code">commands</span> for a list of existing commands. <br>Type <span class="code">info</span> to learn how to add your own commands.</span> <br> External links are currently <span class="code">not supported.</span></span>
+            </p>
+        </div>
+      </div>
+    </div>
+  </div>
+<!--   <footer class="footer">
+    <h3>Testing</h3>
+  </footer> -->
+</section>
+  <script src='https://use.fontawesome.com/releases/v5.3.1/js/all.js'></script><script type="module"   src="./script.js"></script>
+
+</body>
+</html>

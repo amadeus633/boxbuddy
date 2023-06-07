@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys
+import os
 from PyQt5.QtWidgets import (
     QApplication,
     QWidget,
@@ -14,12 +15,19 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QFileDialog
 )
-from PyQt5.QtCore import QThreadPool, QRunnable, QObject, pyqtSignal
+from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QDockWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QThreadPool, QRunnable, QObject, pyqtSignal, QUrl
 from PyQt5.QtGui import QIcon, QClipboard
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 import subprocess
 import platform
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename
+from scripts.copypaste import CopyPasteTab
+from notes import NotesWidget
+import openai
+openai.api_key = "OPENAI_API_KEY"
+
 
 class ScriptRunnerSignals(QObject):
     output_ready = pyqtSignal(str, str, str)
@@ -32,81 +40,96 @@ class ScriptRunner(QRunnable):
         self.signals = ScriptRunnerSignals()
 
     def run(self):
-        if platform.system() == "Windows":
-            result = subprocess.run(
-                ["cmd.exe", "/k"] + self.command,
-                creationflags=subprocess.CREATE_NEW_CONSOLE,
-                capture_output=True,
-            )
-        elif platform.system() == "Linux":
-            shell = "zsh"
-            result = subprocess.run(["exo-open", "--launch", "TerminalEmulator"] + [shell, "-c", " ".join(self.command) + "; exec " + shell], capture_output=True)
-        else:
-            result = subprocess.run(["qterminal", "-e"] + [" ".join(self.command)], capture_output=True)
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
 
-        stdout, stderr = result.stdout, result.stderr
-        self.signals.output_ready.emit(f"Command: {self.command}", stdout.decode(), stderr.decode())
+        process = subprocess.Popen(
+            self.command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            env=env,
+        )
 
-def update_output_widget(command, stdout, stderr):
-    output_widget.append(command)
-    output_widget.append("STDOUT:")
-    output_widget.append(stdout)
-    output_widget.append("STDERR:")
-    output_widget.append(stderr)
+        while True:
+            output = process.stdout.readline()
+            if output == "" and process.poll() is not None:
+                break
+            if output:
+                self.signals.output_ready.emit(f"-", output.strip(), "")
 
-def run_script1_with_input(output_widget):
+        while True:
+            output = process.stderr.readline()
+            if output == "" and process.poll() is not None:
+                break
+            if output:
+                self.signals.output_ready.emit(f"-", "", output.strip())
+
+def append_output(prefix, stdout, stderr):
+    if stdout:
+        output_widget.append(f"{prefix} {stdout}")
+    if stderr:
+        output_widget.append(f"{prefix} {stderr}")
+
+def run_nmap(output_widget):
     ip_address = ip_entry.text()
     if not ip_address:
         return
-    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
-    runner.signals.output_ready.connect(update_output_widget)
+    script_path = os.path.join("", "scripts", "nmap.py")
+    runner = ScriptRunner(["python", script_path, ip_address])
+    runner.signals.output_ready.connect(append_output)
     QThreadPool.globalInstance().start(runner)
-
-# ... (The rest of your script remains the same)
-
-# In each function where you create a ScriptRunner instance, connect the output_ready signal to the update_output_widget slot:
-# runner.signals.output_ready.connect(update_output_widget)
-
 
 def run_nikto(output_widget):
     ip_address = ip_entry.text()
     if not ip_address:
         return
-    runner = ScriptRunner(["python", "scripts/nikto.py", ip_address])
-    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
-    runner.signals.output_ready.connect(update_output_widget)
+    script_path = os.path.join("", "scripts", "nikto.py")
+    runner = ScriptRunner(["python", script_path, ip_address])
+    runner.signals.output_ready.connect(append_output)
     QThreadPool.globalInstance().start(runner)
 
 def run_dirsearch(output_widget):
-    ddomain = ddomain_entry.text()
-    if not ddomain:
+    targeturl = targeturl_entry.text()
+    if not targeturl:
         return
-    runner = ScriptRunner(["python", "scripts/dirsearch.py", ddomain])
-    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
-    runner.signals.output_ready.connect(update_output_widget)
+    script_path = os.path.join("", "scripts", "dirsearch.py")
+    runner = ScriptRunner(["python", script_path, targeturl])
+    runner.signals.output_ready.connect(append_output)
     QThreadPool.globalInstance().start(runner)
 
 def run_gobuster_vhost(output_widget):
-    ddomain = ddomain_entry.text()
-    if not ddomain:
+    domain = targeturl_entry.text()
+    if not domain:
         return
-    runner = ScriptRunner(["python", "scripts/gobuster-vhost.py", ddomain])
-    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
-    runner.signals.output_ready.connect(update_output_widget)
+    script_path = os.path.join("", "scripts", "gobuster_vhost.py")
+    runner = ScriptRunner(["python", script_path, domain])
+    runner.signals.output_ready.connect(append_output)
     QThreadPool.globalInstance().start(runner)
 
 def run_gobuster_dir(output_widget):
-    ddomain = ddomain_entry.text()
-    if not ddomain:
+    targeturl = targeturl_entry.text()
+    if not targeturl:
         return
-    runner = ScriptRunner(["python", "scripts/gobuster-dir.py", ddomain])
-    runner = ScriptRunner(["python", "scripts/nmap.py", ip_address])
-    runner.signals.output_ready.connect(update_output_widget)
+    script_path = os.path.join("", "scripts", "gobuster_dir.py")
+    runner = ScriptRunner(["python", script_path, targeturl])
+    runner.signals.output_ready.connect(append_output)
+    QThreadPool.globalInstance().start(runner)
+
+def run_gobuster_dns(output_widget):
+    targeturl = targeturl_entry.text()
+    if not targeturl:
+        return
+    script_path = os.path.join("", "scripts", "gobuster_dns.py")
+    runner = ScriptRunner(["python", script_path, targeturl])
+    runner.signals.output_ready.connect(append_output)
     QThreadPool.globalInstance().start(runner)
 
 def run_vpn(file):
     runner = ScriptRunner(["python", "scripts/vpn.py", f"{file}"])
     QThreadPool.globalInstance().start(runner)
+
 
 def load_stylesheet(file_path):
     with open(file_path, "r") as file:
@@ -114,19 +137,49 @@ def load_stylesheet(file_path):
         
 def file_select():
     global filename
-    Tk().withdraw()
-    filename = askopenfilename()
-    file_label.setText(filename.split('/')[-1])
+    options = QFileDialog.Options()
+    options |= QFileDialog.ReadOnly
+    filename, _ = QFileDialog.getOpenFileName(window, "Select File", "", "All Files (*)", options=options)
+    if filename:
+        file_label.setText(filename.split('/')[-1])
+#
+#
+#
+# hackGPT
+def generate_text(prompt):
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=2000,
+        n=1,
+        temperature=0.5,
+    )
 
-def run_hosts():
-    ddomain = ddomain_entry.text()
-    if not ddomain:
-        return
-    ip_address = ip_entry.text()
-    if not ip_address:
-        return
-    runner = ScriptRunner(["python", "scripts/hosts.py", ip_address, ddomain])
-    QThreadPool.globalInstance().start(runner)
+    message = response['choices'][0]['message']['content'].strip()
+    return message
+#
+#
+#
+# Personal CLI
+class CLITab(QWidget):
+    def __init__(self, parent=None):
+        super(CLITab, self).__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        web_engine_view = QWebEngineView()
+
+        # Get the absolute path for the index.html file
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        index_file_path = os.path.join(current_dir, "cli", "index.html")
+
+        web_engine_view.load(QUrl.fromLocalFile(index_file_path))
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(web_engine_view)   
 #
 #
 #
@@ -139,13 +192,15 @@ app.setStyleSheet(load_stylesheet("styles.css"))
 icon = QIcon("img/200x200.png")
 app.setWindowIcon(icon)
 
-# window size
-window = QWidget()
+# Create a QMainWindow
+window = QMainWindow()
 window.setWindowTitle("BoxBuddy")
-window.setGeometry(100, 100, 700, 500)
+window.setGeometry(100, 100, 700, 900)
 
+central_widget = QWidget()
 layout = QVBoxLayout()
-window.setLayout(layout)
+central_widget.setLayout(layout)
+window.setCentralWidget(central_widget)
 
 tab_widget = QTabWidget()
 layout.addWidget(tab_widget)
@@ -153,10 +208,7 @@ layout.addWidget(tab_widget)
 #
 #
 #
-#
 # Tab 1: Setup commands
-
-filename = 'None selected'
 
 setup_tab = QWidget()
 tab_widget.addTab(setup_tab, "Setup")
@@ -167,28 +219,14 @@ file_btn = QPushButton("Select file")
 file_btn.clicked.connect(file_select)
 setup_layout.addWidget(file_btn)
 
+filename = 'None selected'
+
 file_label = QLabel(filename)
 setup_layout.addWidget(file_label)
 
 button3 = QPushButton("vpn")
-button3.clicked.connect(lambda:run_vpn(filename))
+button3.clicked.connect(lambda: run_vpn(filename))
 setup_layout.addWidget(button3)
-
-ip_label = QLabel("Please enter the IP address:")
-setup_layout.addWidget(ip_label)
-
-ip_entry = QLineEdit()
-setup_layout.addWidget(ip_entry)
-
-ddomain_label = QLabel("Please enter the domain:")
-setup_layout.addWidget(ddomain_label)
-
-ddomain_entry = QLineEdit()
-setup_layout.addWidget(ddomain_entry)
-
-button4 = QPushButton("Add to etc/hosts")
-button4.clicked.connect(run_hosts)
-setup_layout.addWidget(button4)
 #
 #
 #
@@ -207,18 +245,18 @@ ip_entry = QLineEdit()
 recon_layout.addWidget(ip_entry)
 
 button1 = QPushButton("nmap")
-button1.clicked.connect(run_script1_with_input)
+button1.clicked.connect(run_nmap)
 recon_layout.addWidget(button1)
 
 button2 = QPushButton("nikto")
 button2.clicked.connect(run_nikto)
 recon_layout.addWidget(button2)
 
-ddomain_label = QLabel("Please enter the domain:")
-recon_layout.addWidget(ddomain_label)
+domain_label = QLabel("Please enter the target URL:")
+recon_layout.addWidget(domain_label)
 
-ddomain_entry = QLineEdit()
-recon_layout.addWidget(ddomain_entry)
+targeturl_entry = QLineEdit()
+recon_layout.addWidget(targeturl_entry)
 
 button3 = QPushButton("dirsearch")
 button3.clicked.connect(run_dirsearch)
@@ -232,7 +270,11 @@ button5 = QPushButton("gobuster - dir")
 button5.clicked.connect(run_gobuster_dir)
 recon_layout.addWidget(button5)
 
-feed_label = QLabel("Feed (loads after closing terminal window)")
+button6 = QPushButton("gobuster - dns")
+button6.clicked.connect(run_gobuster_dns)
+recon_layout.addWidget(button6)
+
+feed_label = QLabel("Feed")
 recon_layout.addWidget(feed_label)
 output_widget = QTextEdit()
 output_widget.setReadOnly(True)
@@ -252,80 +294,75 @@ recon_layout.addWidget(save_button)
 #
 #
 #
-# Tab 3: CopyPaste
 
-class CopyPasteTab(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+
+CopyPaste_tab = CopyPasteTab()
+tab_widget.addTab(CopyPaste_tab, "CopyPaste")
+
+class ChatGPTTab(QWidget):
+    def __init__(self):
+        super().__init__()
 
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout()
 
-        form_layout = QFormLayout()
-        self.domain_entry = QLineEdit()
-        self.ipaddress_entry = QLineEdit()
-        form_layout.addRow("Domain:", self.domain_entry)
-        form_layout.addRow("IP address:", self.ipaddress_entry)
+        # User input
+        layout.addWidget(QLabel("Your message:"))
+        self.user_input = QTextEdit(self)
+        layout.addWidget(self.user_input)
 
-        submit_button = QPushButton("Submit")
-        submit_button.clicked.connect(self.on_submit)
-        form_layout.addRow(submit_button)
+        # Send button
+        self.send_button = QPushButton("Send", self)
+        self.send_button.clicked.connect(self.send_message)
+        layout.addWidget(self.send_button)
+        
+        # ChatGPT response
+        layout.addWidget(QLabel("Response:"))
+        
+        self.chatgpt_response = QTextEdit(self)
+        self.chatgpt_response.setReadOnly(True)
+        layout.addWidget(self.chatgpt_response)
 
-        layout.addLayout(form_layout)
-
-        line = QLabel()
-        line.setFrameShape(QLabel.HLine)
-        line.setFrameShadow(QLabel.Sunken)
-        layout.addWidget(line)
-
-        self.sentences = [
-            "nmap -sC -sV -Pn -p- ipaddress",
-            "dirb http://ipaddress /usr/share/dirb/wordlists/common.txt -X .htbdomain",
-            "nikto -h ipaddress",
-            "Sed do eiusmod ipaddress tempor incididunt.",
-            "Sed do eiusmod ipaddress tempor incididunt.",
-            "Sed do eiusmod ipaddress tempor incididunt.",
-            "Sed do eiusmod ipaddress tempor incididunt."
-        ]
-
-        self.buttons = []
-        self.labels = []
-
-        for sentence in self.sentences:
-            button = QPushButton("Copy")
-            button.clicked.connect(self.copy_to_clipboard)
-            label = QLabel(sentence)
-            sentence_layout = QHBoxLayout()
-            sentence_layout.addWidget(button)
-            sentence_layout.addWidget(label)
-            layout.addLayout(sentence_layout)
-            self.buttons.append(button)
-            self.labels.append(label)
-
+        # Copy button
+        self.copy_button = QPushButton("Copy", self)
+        self.copy_button.clicked.connect(self.copy_chatgpt_response)
+        layout.addWidget(self.copy_button)
+        
         self.setLayout(layout)
 
-    def on_submit(self):
-        ipaddress = self.ipaddress_entry.text()
-        domain = self.domain_entry.text()
 
-        for i, sentence in enumerate(self.sentences):
-            updated_sentence = sentence.replace("ipaddress", ipaddress).replace("htbdomain", domain)
-            self.labels[i].setText(updated_sentence)
+    def send_message(self):
+        user_message = self.user_input.toPlainText()
+        chatgpt_message = generate_text(user_message)
+        self.chatgpt_response.setPlainText(chatgpt_message)
 
-    def copy_to_clipboard(self):
-        index = self.buttons.index(self.sender())
-        text = self.labels[index].text()
+    def copy_chatgpt_response(self):
+        chatgpt_message = self.chatgpt_response.toPlainText()
         clipboard = QApplication.clipboard()
-        clipboard.setText(text)
+        clipboard.setText(chatgpt_message)
 #
 #
 #
-CopyPaste_tab = CopyPasteTab()
-tab_widget.addTab(CopyPaste_tab, "CopyPaste")
+hackGPT_tab = ChatGPTTab()
+tab_widget.addTab(hackGPT_tab, "hackGPT")
+#
+#
+#
+cli_tab = CLITab()
+tab_widget.addTab(cli_tab, "CLI")
+#
+#
+#
+notes_widget = NotesWidget()
+notes_dock = QDockWidget("Notes", window)
+notes_dock.setWidget(notes_widget)
+window.addDockWidget(Qt.RightDockWidgetArea, notes_dock)
 
-#
+notes_dock_button = QPushButton("Toggle Notes", central_widget)
+notes_dock_button.clicked.connect(notes_dock.toggleViewAction().trigger)
+layout.addWidget(notes_dock_button)
 
 window.show()
 sys.exit(app.exec_())

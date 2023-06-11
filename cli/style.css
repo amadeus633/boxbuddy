@@ -213,3 +213,6 @@ p {
     padding-bottom: 0.5rem;
   }
 }
+.text-container p {
+    line-height: 1.5;
+}

@@ -1,10 +1,8 @@
-#!/usr/bin/python
-
 import sys
 import subprocess
 
 def main(targeturl):
-    command_template = "dirsearch -u domain -x 403,401 -w /usr/share/wordlists/dirb/common.txt"
+    command_template = "gobuster dns -d domain -w /usr/share/wordlists/dirb/big.txt"
     command = command_template.replace('domain', targeturl)
 
     try:
@@ -29,5 +27,5 @@ if __name__ == "__main__":
         targeturl = sys.argv[1]
         main(targeturl)
     else:
-        print("No IP address provided.")
+        print("No URL provided.")
         sys.exit(1)

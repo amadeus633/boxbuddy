@@ -1,9 +1,9 @@
 import sys
 import subprocess
 
-def main(nip_address):
+def main(ip_address):
     command_template = "nikto -h ipaddress -Tuning quick"
-    command = command_template.replace('ipaddress', nip_address)
+    command = command_template.replace('ipaddress', ip_address)
 
     try:
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
@@ -24,8 +24,8 @@ def main(nip_address):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        nip_address = sys.argv[1]
-        main(nip_address)
+        ip_address = sys.argv[1]
+        main(ip_address)
     else:
         print("No IP address provided.")
         sys.exit(1)

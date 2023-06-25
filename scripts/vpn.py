@@ -3,7 +3,7 @@ import subprocess, sys
 def main(vpnfile):
 
     vpnfile = vpnfile.replace(';','')
-    command = f"sudo openvpn {vpnfile} &"
+    command = f"sudo openvpn {vpnfile}"
 
     try:
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
@@ -11,7 +11,7 @@ def main(vpnfile):
         while True:
             output = process.stdout.readline()
             error = process.stderr.readline()
-            if output == '':
+            if output == '' & process.poll() is not None:
                 break
             if output:
                 print(output.strip())

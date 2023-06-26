@@ -1,11 +1,13 @@
+#!/usr/bin/python
+
 import sys
 import subprocess
 import sh
 
-def main(ip_address):
-    command_template = "nmap -sC -sV -Pn -p- ipaddress"
-    command = command_template.replace('ipaddress', ip_address)
-
+def main(targetdomain):
+    command_template = "ffuf -u http://domain/FUZZ -w wordlists/directories.txt -mc 200,403 -fc 8161"
+    command = command_template.replace('domain', targetdomain)
+    
     try:
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
@@ -25,8 +27,8 @@ def main(ip_address):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        ip_address = sys.argv[1]
-        main(ip_address)
+        targetdomain = sys.argv[1]
+        main(targetdomain)
     else:
         print("No IP address provided.")
         sys.exit(1)

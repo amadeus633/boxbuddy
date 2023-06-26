@@ -214,7 +214,7 @@ setup_tab = QWidget()
 tab_widget.addTab(setup_tab, "Setup")
 setup_layout = QVBoxLayout()
 setup_tab.setLayout(setup_layout)
-setup_tab..setToolTip("Select your .ovpn file and run command to connect")  # Set tooltip here
+setup_tab.setToolTip("Select your .ovpn file and run command to connect")  # Set tooltip here
 file_btn = QPushButton("Select file")
 file_btn.clicked.connect(file_select)
 setup_layout.addWidget(file_btn)
